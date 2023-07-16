@@ -24,10 +24,61 @@ def station_info(data):
     return station_info
 
 
+def station_status(data):
+
+    r = requests.get(data['data']['en']['feeds'][2]['url'])
+    station_status = r.json()
+
+    return station_status
+
+
+def parse_station_status(station_status_json):
+
+    station_status_list = []
+    last_update = station_status_json['last_updated']
+
+    for station in range(len(station_status_json['data']['stations'])):
+        try:
+            station_status = station_status_json['data']['stations'][station]['station_status']
+            last_reported = station_status_json['data']['stations'][station]['last_reported']
+            num_bikes_available = station_status_json['data']['stations'][station]['num_bikes_available']
+            available_scooters = station_status_json['data']['stations'][station]['num_scooters_available']
+            num_ebikes_available = station_status_json['data']['stations'][station]['num_ebikes_available']
+            num_bikes_disabled = station_status_json['data']['stations'][station]['num_bikes_disabled']
+            station_id = station_status_json['data']['stations'][station]['station_id']
+            is_returning = station_status_json['data']['stations'][station]['is_returning']
+            is_renting = station_status_json['data']['stations'][station]['is_renting']
+            num_docks_disabled = station_status_json['data']['stations'][station]['num_docks_disabled']
+            num_docks_available = station_status_json['data']['stations'][station]['num_docks_available']
+
+        except KeyError:
+            pass
+
+        station_status_dict = {
+            'station_status' : station_status,
+            'last_reported' : dt.datetime.fromtimestamp(last_reported),
+            'last_updated' : dt.datetime.fromtimestamp(last_update),
+            'available_scooters': available_scooters,
+            'num_bikes_available' : num_bikes_available,
+            'num_bikes_disabled' : num_bikes_disabled,
+            'num_ebikes_available' : num_ebikes_available,
+            'station_id' : station_id,
+            'is_renting' : is_renting,
+            'is_returning' : is_returning,
+            'num_docks_available' : num_docks_available,
+            'num_docks_disabled' : num_docks_disabled
+        }
+        
+        station_status_list.append(station_status_dict)
+
+    return station_status_list
+
+
 def parse_station_info(stations_json):
 
     station_list = []
     last_update = stations_json['last_updated']
+     
     for station in range(len(stations_json['data']['stations'])):
         region_id = stations_json['data']['stations'][station]['region_id']
         has_kiosk = stations_json['data']['stations'][station]['has_kiosk']
@@ -56,7 +107,7 @@ def parse_station_info(stations_json):
 
         station_list.append(station_dict)
         
-    return station_list   
+    return station_list
 
 
 def get_bike_info(data):
@@ -65,6 +116,7 @@ def get_bike_info(data):
     bike_data = resp.json()
 
     return bike_data
+
 
 def parse_bike_info(bike_json):
     bike_list = []
@@ -87,15 +139,19 @@ def parse_bike_info(bike_json):
             'last_updated' : dt.datetime.fromtimestamp(last_update)
         }
         bike_list.append(bike_dict)
-    return bike_list
+    return bike_list   
+
 
 df_stations = pd.DataFrame(parse_station_info(station_info(main_request(base_url))))
+
 df_bikes = pd.DataFrame(parse_bike_info(get_bike_info(main_request(base_url))))
 
-geometry = [Point(xy) for xy in zip(df_stations['longitude'], df_stations['latitude'])]
+df_dc_area_stations = df_stations[df_stations['region_id'].isin(['42','104','43'])]
+
+geometry = [Point(xy) for xy in zip(df_dc_area_stations['longitude'], df_dc_area_stations['latitude'])]
 crs = {'init':'epsg:3395'}
 
-geo_df = gpd.GeoDataFrame(df_stations,
+geo_df = gpd.GeoDataFrame(df_dc_area_stations,
                           crs=crs,
                           geometry=geometry)
 
@@ -109,8 +165,11 @@ geo_df.plot(ax=ax, marker='o', color='red', markersize=5, zorder=2)
 # Set the plot extent to Washington, D.C.
 ax.set_xlim(washington.total_bounds[0], washington.total_bounds[2])
 ax.set_ylim(washington.total_bounds[1], washington.total_bounds[3])
-# Customize the map appearance (optional)
-ax.set_title("Bike-sharing stations in Washington, D.C.")
+
+# Customize the map appearance
+updated_time = df_dc_area_stations.iloc[1,10]
+
+ax.set_title(f"Bike-Sharing Stations in Washington, D.C. at {updated_time}")
 ax.set_xlabel("Longitude")
 ax.set_ylabel("Latitude")
 
@@ -128,16 +187,84 @@ fig, ax = plt.subplots(figsize=(12, 12))
 washington.plot(ax=ax, zorder= 1)
 
 # Plot the GeoDataFrame on the axis
-geo_df.plot(ax=ax, marker='o', color='red', markersize=5, zorder=2)
+geo_df.plot(ax=ax, marker='o', color='red', markersize=8, zorder=2)
 
 # Set the plot extent to Washington, D.C.
 ax.set_xlim(washington.total_bounds[0], washington.total_bounds[2])
 ax.set_ylim(washington.total_bounds[1], washington.total_bounds[3])
 
+updated_time = df_bikes.iloc[1,6]
+
 # Customize the map appearance (optional)
-ax.set_title("Available Bikes in Washington, D.C.")
+ax.set_title(f"Available Bikes in Washington, D.C. at {updated_time}")
 ax.set_xlabel("Longitude")
 ax.set_ylabel("Latitude")
 
+# Display the map
+plt.show()
+
+df_station_status = pd.DataFrame(parse_station_status(station_status(main_request(base_url))))
+
+df_stations_merged = pd.merge(df_dc_area_stations, df_station_status, on='station_id')
+
+geometry = [Point(xy) for xy in zip(df_stations_merged['longitude'], df_stations_merged['latitude'])]
+
+geo_df = gpd.GeoDataFrame(df_stations_merged, #specify our data
+                          crs=crs, #specify our coordinate reference system
+                          geometry=geometry) #specify the geometry list we created
+
+#Plot availability of Bikes in DC Area
+fig, ax = plt.subplots(figsize=(12,12))
+washington.plot(ax=ax, alpha=0.4, color='grey')
+geo_df[geo_df['num_bikes_available'] <= 3].plot(ax=ax, 
+                                       markersize=15, 
+                                       color='red', 
+                                       marker='o', 
+                                       label='Low on Bikes')
+geo_df[geo_df['num_bikes_available'] >= 4].plot(ax=ax, 
+                                       markersize=20, 
+                                       color='green', 
+                                       marker='^', 
+                                       label='More than 5 Bikes')
+# Set the plot extent to Washington, D.C.
+ax.set_xlim(washington.total_bounds[0], washington.total_bounds[2])
+ax.set_ylim(washington.total_bounds[1], washington.total_bounds[3])
+
+updated_time = df_stations_merged.iloc[1,10]
+
+# Customize the map appearance 
+ax.set_title(f"Stations with more than 4 available bikes in Washington, D.C. at {updated_time}")
+ax.set_xlabel("Longitude")
+ax.set_ylabel("Latitude")
+
+plt.legend(prop={'size':15})
+# Display the map
+plt.show()
+
+#Plot for eBikes
+fig, ax = plt.subplots(figsize=(12,12))
+washington.plot(ax=ax, alpha=0.4, color='grey')
+geo_df[geo_df['num_ebikes_available'] == 0].plot(ax=ax, 
+                                       markersize=15, 
+                                       color='red', 
+                                       marker='o', 
+                                       label='No E-Bikes')
+geo_df[geo_df['num_ebikes_available'] > 0].plot(ax=ax, 
+                                       markersize=20, 
+                                       color='green', 
+                                       marker='^', 
+                                       label='E-Bikes available')
+# Set the plot extent to Washington, D.C.
+ax.set_xlim(washington.total_bounds[0], washington.total_bounds[2])
+ax.set_ylim(washington.total_bounds[1], washington.total_bounds[3])
+
+updated_time = df_stations_merged.iloc[1,10]
+
+# Customize the map appearance
+ax.set_title(f"Stations with available ebikes in Washington, D.C. at {updated_time}")
+ax.set_xlabel("Longitude")
+ax.set_ylabel("Latitude")
+
+plt.legend(prop={'size':15})
 # Display the map
 plt.show()
