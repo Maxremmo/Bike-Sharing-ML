@@ -1,5 +1,5 @@
 # Bike Sharing Demand Prediction
-![Uploading map_gif.gif…]()
+
 
 ## Background
 
