@@ -21,6 +21,8 @@ The project is organized into the following folders:
 
 ## Interactive Map
 
+![map_gif](https://github.com/Maxremmo/Bike-Sharing-ML/assets/73691593/4c95e04d-34b0-4924-9303-2d6cfe0563e9)
+
 The interactive map in this project is a unique and engaging feature. It allows you to visualize the real-time positions of bikes in Washington D.C., providing valuable insights into live bike-sharing patterns and availability. While the regression tasks are based on historical data from 2011 and 2012, the interactive map presents current data, giving users a real-time perspective on bike-sharing activity in the city.
 
 Feel free to explore, analyze, and contribute to this project, with special attention to the captivating interactive map in the Visualization folder!
