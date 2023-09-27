@@ -1,6 +1,5 @@
 # Bike Sharing Demand Prediction
-
-![Interactive_map_showcase](https://imgur.com/IVgFX2E)
+![Uploading map_gif.gif…]()
 
 ## Background
 
