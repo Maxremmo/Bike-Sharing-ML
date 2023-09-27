@@ -12,7 +12,11 @@ The project is organized into the following folders:
 
   - Regression: In this folder, you will find notebooks and scripts related to bike-sharing demand prediction using regression techniques. These include models for predicting bike rental counts on an hourly or daily basis based on various factors.
   
-  - Visualization: The Visualization folder is the highlight of this project. It features an interactive map that displays the real-time positions of bikes in Washington D.C. Every time the map is reloaded, it updates to reflect the current bike locations, enhancing the user's understanding of bike-sharing dynamics in the city.
+  - Visualization: The Visualization folder is the highlight of this project. It features an interactive map with layers that can be turned on and off. This map allows you to:
+
+    - View real-time positions of bikes, and stations along with their current capacity in Washington D.C.
+    - Highlight or hide the Washington D.C. area.
+    - Explore the 100 most popular bike routes for the years 2011, 2014, 2019, and 2023.
 
 ## Interactive Map
 
